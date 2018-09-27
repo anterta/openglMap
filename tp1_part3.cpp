@@ -97,6 +97,7 @@ public:
         m_sun.release();
         return 0;
     }
+
     int update( const float time, const float delta )
     {
         m_sun.rotation(0, 0.2);
@@ -146,7 +147,7 @@ public:
             program_uniform(m_program, "mvpMatrix", mvp);
             program_uniform(m_program, "mvMatrix", mv);
             program_uniform(m_program, "normalMatrix", mv.normal());
-            program_uniform(m_program, "nbCubes", m_nbRegions*64);        
+            program_uniform(m_program, "nbCubes", m_nbRegions*64);    
 
             m_textures.blindTextures(m_program);
 

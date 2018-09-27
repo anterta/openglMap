@@ -6,7 +6,6 @@ layout(location= 0) in vec3 position;
 layout(location= 3) in vec2 texcoord;
 layout(location= 2) in vec3 normal;
 
-// l'attribut d'instance se declare "normalement", c'est l'application qui doit correctement configurer le vao...
 layout(location= 1) in vec3 instance_position;
 
 uniform mat4 mvpMatrix;
