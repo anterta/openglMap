@@ -30,11 +30,13 @@ public:
         Point pmin, pmax;
         m_terrain.bounds(pmin, pmax);
         m_camera.lookat(pmin, pmax);
-        //m_sun.positionne(pmin,pmax);
+        m_sun.positionne(pmin,pmax);
         m_camera.translation(0.0, 0.05);
         m_camera.move(10.0);
         
-        //m_sun.createFramebuffer();
+        if(m_sun.createFramebuffer())  {
+            printf("Ok\n");
+        }
 
         m_vertex_count= mesh.vertex_count();
 
@@ -95,6 +97,11 @@ public:
         m_sun.release();
         return 0;
     }
+    int update( const float time, const float delta )
+    {
+        m_sun.rotation(0, 0.2);
+        return 0;
+    }
     
     // dessiner une nouvelle image
     int render( )
@@ -113,7 +120,7 @@ public:
             m_camera.move(my);
         }
         
-        //m_sun.passe1(m_vao, m_program, m_terrain, m_vertex_count,m_textures); 
+        m_sun.passe1(m_vao, m_program, m_terrain, m_vertex_count,m_textures); 
 
         if(key_state(' '))
         {
@@ -121,11 +128,11 @@ public:
                 copie le framebuffer sur la fenetre
              */
             m_sun.showFramebuffer();
-        } else {/*
+        } else {
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
             glViewport(0, 0, window_width(), window_height());
             glClearColor(0.2f, 0.2f, 0.2f, 1.f);        // couleur par defaut de la fenetre
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);*/
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             glBindVertexArray(m_vao);
             glUseProgram(m_program);
@@ -152,7 +159,7 @@ public:
                     nbRegionsVisibles++;
                 }
             
-            printf(" -> %d\n",nbRegionsVisibles);
+            //printf(" -> %d\n",nbRegionsVisibles);
         }
         return 1;
     }

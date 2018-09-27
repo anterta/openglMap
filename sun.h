@@ -15,31 +15,11 @@ class Sun
         m_sun.rotation(-70.0, 35.0);
     }
 
+    void rotation(float x, float y) {
+        m_sun.rotation(x,y);
+    }
+
     bool createFramebuffer() {
-        // The framebuffer, which regroups 0, 1, or more textures, and 0 or 1 depth buffer.
-        glGenFramebuffers(1, &m_framebuffer);
-        glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffer);
-
-        // Depth texture. Slower than a depth buffer, but you can sample it later in your shader
-        glGenTextures(1, &sun_zbuffer_texture);
-        glBindTexture(GL_TEXTURE_2D, sun_zbuffer_texture);
-        glTexImage2D(GL_TEXTURE_2D, 0,GL_DEPTH_COMPONENT16, m_framebuffer_width, m_framebuffer_height, 0,GL_DEPTH_COMPONENT, GL_FLOAT, 0);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, sun_zbuffer_texture, 0);
-
-        glDrawBuffer(GL_NONE); // No color buffer is drawn to.
-
-        // Always check that our framebuffer is ok
-        if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-            return false;
-
-        return true;
-
-/*
         // etape 1 : creer une texture couleur...
         glGenTextures(1, &sun_color_buffer);
         glBindTexture(GL_TEXTURE_2D, sun_color_buffer);
@@ -78,11 +58,17 @@ class Sun
         glDrawBuffers(1, buffers);
         
         // nettoyage
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);*/
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
         // shaders
         m_texture_program= read_program("src/tp1_part3_shaderTexture.glsl");
         program_print_errors(m_texture_program);
+
+        // Always check that our framebuffer is ok
+        if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+            return false;
+
+        return true;
     }
 
     void release() {
@@ -115,9 +101,8 @@ class Sun
         program_uniform(m_texture_program, "normalMatrix", mv.normal());
 
         for(int i=0; i< terrain.nbRegions()*terrain.nbRegions(); i++)
-            if(terrain.visbleCamera(i,mvp)) {
+            if(terrain.visbleCamera(i,mvp))
                 terrain.drawRegion(i,vertex_count);
-            }
     }
 
     void showFramebuffer() {
