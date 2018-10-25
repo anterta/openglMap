@@ -46,11 +46,11 @@ void Terrain::make_terrain( const char *filename, const int nbRegions ) {
                     float hU = 0.0;
                     if(x>0)
                         hL = height[indice(x-1,y)];
-                    if(x<nbRegions*64)
+                    if(x<nbRegions*64-1)
                         hR = height[indice(x+1,y)];
                     if(y>0)
                         hD = height[indice(x,y-1)];
-                    if(y<nbRegions*64)
+                    if(y<nbRegions*64-1)
                         hU = height[indice(x,y+1)];
 
                     m_mesh.normal(normalize(Vector(hL - hR,2.0,hD - hU)));
@@ -83,8 +83,7 @@ void Terrain::createBuffer(GLuint &buffer) {
     m_mesh.release();
 }
 
-bool visible( const Transform& mvp, const Point& pmin, const Point& pmax )
-{
+bool visible( const Transform& mvp, const Point& pmin, const Point& pmax ) {
     int planes[6] = { };
     
     // enumere les 8 sommets de la boite englobante
@@ -123,7 +122,6 @@ bool Terrain::visbleCamera(int i, Transform mvp) {
     int x = i - y * m_nbRegions;
     Point pmin = Point(x*64,m_min_max[i].x,-y*64);
     Point pmax = Point((x+1)*64,m_min_max[i].y,-(y+1)*64);
-    return visible(mvp,pmin,pmax);
 
     vec4 vmin = mvp(vec4(pmin));
     vec4 vmax = mvp(vec4(pmax));
@@ -131,10 +129,42 @@ bool Terrain::visbleCamera(int i, Transform mvp) {
     vec4 vmin2 = mvp(vec4(Point(x*64,m_min_max[i].x,-(y+1)*64)));
     vec4 vmax2 = mvp(vec4(Point((x+1)*64,m_min_max[i].y,-y*64)));
     
-    return (((vmin.x > -vmin.w || vmax.x > -vmax.w) && (vmin.x < vmin.w || vmax.x < vmax.w)) && 
+    return visible(mvp,pmin,pmax);/* && (
+            (((vmin.x > -vmin.w || vmax.x > -vmax.w) && (vmin.x < vmin.w || vmax.x < vmax.w)) && 
             ((vmin.y > -vmin.w || vmax.y > -vmax.w) && (vmin.y < vmin.w || vmax.y < vmax.w)) && 
             ((vmin.z > -vmin.w || vmax.z > -vmax.w) && (vmin.z < vmin.w || vmax.z < vmax.w)))
         || (((vmin2.x > -vmin2.w || vmax2.x > -vmax2.w) && (vmin2.x < vmin2.w || vmax2.x < vmax2.w)) && 
             ((vmin2.y > -vmin2.w || vmax2.y > -vmax2.w) && (vmin2.y < vmin2.w || vmax2.y < vmax2.w)) && 
-            ((vmin2.z > -vmin2.w || vmax2.z > -vmax2.w) && (vmin2.z < vmin2.w || vmax2.z < vmax2.w)));
+            ((vmin2.z > -vmin2.w || vmax2.z > -vmax2.w) && (vmin2.z < vmin2.w || vmax2.z < vmax2.w))));*/
+}
+
+float Terrain::getHauteur(float x, float y) {
+    if(x==(int)x && y==(int)y) {
+        return get((int)x,(int)y).y;
+    } else if(x==(int)x) {
+        int minY = (int)y;
+        int maxY = minY+1;
+        float h1 = get((int)x,minY).y;
+        float h2 = get((int)x,maxY).y;
+        float d = y - minY;
+        return h1 + d*(h1-h2);
+    } else if(y==(int)y){
+        int minX = (int)x;
+        int maxX = minX+1;
+        float h1 = get(minX,(int)y).y;
+        float h2 = get(maxX,(int)y).y;
+        float d = x - minX;
+        return h1 + d*(h1-h2);
+    }
+
+    int minX = (int)x;
+    int maxX = minX+1;
+    int minY = (int)y;
+    int maxY = minY+1;
+    float h1 = get(minX,minY).y;
+    float h2 = get(maxX,maxY).y;
+    x -= (float)minX;
+    y -= (float)minY;
+    float d = sqrt(x*x+y*y)/sqrt(2.0);
+    return h1 + d*(h1-h2);
 }

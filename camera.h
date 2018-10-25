@@ -3,6 +3,7 @@
 
 #include "mat.h"
 #include "vec.h"
+#include "terrain.h"
 
 class Camera
 {
@@ -13,7 +14,7 @@ class Camera
     ~Camera();
 
     void orienter(int xRel, int yRel);
-    void deplacer();
+    void deplacer(Terrain terrain);
     Transform lookAt();
 
     void setPointcible(Vector pointCible);

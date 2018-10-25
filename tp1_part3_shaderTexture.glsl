@@ -8,35 +8,32 @@ layout(location= 2) in vec3 normal;
 layout(location= 1) in vec3 instance_position;
 
 uniform mat4 mvpMatrix;
-uniform mat4 mvMatrix;
-uniform mat4 normalMatrix;
+//uniform mat4 mvMatrix;
+//uniform mat4 normalMatrix;
 
-out vec3 vertex_position;
-out vec3 vertex_normal;
+out vec4 vertex_position;
+//out vec3 vertex_normal;
+//out vec2 vertex_texcoord;
 
 void main(){
     gl_Position= mvpMatrix * vec4(position + instance_position, 1);
-    vertex_position= vec3(mvMatrix * vec4(position + instance_position, 1));
-    vertex_normal= mat3(normalMatrix) * normal;   // uniquement une rotation, mat3 suffit 
-    
+    //vertex_texcoord = texcoord;
+    vertex_position= mvpMatrix * vec4(position + instance_position, 1);
+    //vertex_normal= mat3(normalMatrix) * normal;   // uniquement une rotation, mat3 suffit
 }
 #endif
 
 #ifdef FRAGMENT_SHADER
-in vec3 vertex_position;
-in vec3 vertex_normal;
+in vec4 vertex_position;
+//in vec3 vertex_normal;
+//in vec2 vertex_texcoord;
 
-// Ouput data
-layout(location = 1) out float fragmentdepth;
+layout(location = 1) out float Zbuffer;
 out vec4 fragment_color;
 
 void main(){
-    // place la source de lumiere sur la camera, repere camera, position 0, 0, 0
-    float cos_theta= dot( normalize(vertex_normal), normalize(-vertex_position));
-
-    fragment_color= cos_theta * vec4(0,1,0,1);
-
-    // Not really needed, OpenGL does it anyway
-    fragmentdepth = gl_FragCoord.z;
+    Zbuffer = gl_FragCoord.z;
+    vec3 color = (vertex_position.xyz/vertex_position.w)*0.5+0.5;
+    fragment_color = vec4(color.z,color.z,color.z,1);
 }
 #endif

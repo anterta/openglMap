@@ -1,5 +1,4 @@
 
-#include "mat.h"
 #include "mesh.h"
 #include "wavefront.h"
 
@@ -10,6 +9,7 @@
 #include "mes_textures.h"
 #include "terrain.h"
 #include "sun.h"
+#include "camera.h"
 
 #include "app_time.h"
 
@@ -20,7 +20,7 @@ public:
     
     int init( )
     {
-        m_nbRegions = 7;
+        m_nbRegions = 10;
         
         // charge le cube et le terrain
         Mesh mesh= read_mesh("data/cube.obj");
@@ -29,10 +29,13 @@ public:
 
         Point pmin, pmax;
         m_terrain.bounds(pmin, pmax);
-        m_camera.lookat(pmin, pmax);
+        vec3 t = m_terrain.get(m_nbRegions*32,m_nbRegions*32);
+        printf("%f %f %f\n",t.x,t.y,t.z);
+        m_camera = Camera(  Vector(t.x,t.y+30,t.z),
+                            Vector(0,1,0),
+                            Vector(1,0,0), 0.1*m_nbRegions, 0.05*m_nbRegions);
         m_sun.positionne(pmin,pmax);
-        m_camera.translation(0.0, 0.05);
-        m_camera.move(10.0);
+        m_sun.addMesh(mesh);
         
         if(m_sun.createFramebuffer())  {
             printf("Ok\n");
@@ -100,7 +103,7 @@ public:
 
     int update( const float time, const float delta )
     {
-        m_sun.rotation(0, 0.2);
+        m_sun.rotation(0, 0.05*m_nbRegions);
         return 0;
     }
     
@@ -109,25 +112,12 @@ public:
     {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
-        // deplace la camera
-        int mx, my;
-        unsigned int mb= SDL_GetRelativeMouseState(&mx, &my);
-        if(mb & SDL_BUTTON(2))              // le bouton du milieu est enfonce
-            m_camera.rotation(mx, my);
-        else if(mb & SDL_BUTTON(3))         // le bouton droit est enfonce
-            m_camera.move(mx);
-        else if(mb & SDL_BUTTON(1)) {       // le bouton gauche est enfonce
-            m_camera.translation((float) mx / (float) window_width(), 0.0);
-            m_camera.move(my);
-        }
+        m_camera.deplacer(m_terrain);
         
         m_sun.passe1(m_vao, m_program, m_terrain, m_vertex_count,m_textures); 
 
-        if(key_state(' '))
-        {
-            /* montrer le resultat de la passe 1
-                copie le framebuffer sur la fenetre
-             */
+        if(key_state(' ')) {
+            // montrer le resultat de la passe 1 copie le framebuffer sur la fenetre
             m_sun.showFramebuffer();
         } else {
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -137,21 +127,20 @@ public:
 
             glBindVertexArray(m_vao);
             glUseProgram(m_program);
-            
+
             Transform m= m_model;
-            Transform v= m_camera.view();
-            Transform p= m_camera.projection(window_width(), window_height(), 45);
+            Transform v= m_camera.lookAt();
+            Transform p= Perspective(70.0, (double) window_width() / window_height(), 0.1, 10000.0);
             Transform mvp= p * v * m;
             Transform mv= v * m;
             
             program_uniform(m_program, "mvpMatrix", mvp);
-            program_uniform(m_program, "mvMatrix", mv);
-            program_uniform(m_program, "normalMatrix", mv.normal());
-            program_uniform(m_program, "nbCubes", m_nbRegions*64);    
+            program_uniform(m_program, "nbCubes", m_nbRegions*64); 
+            program_uniform(m_program, "normalMatrix", mv.normal());   
 
             m_textures.blindTextures(m_program);
 
-            //m_sun.parametrerPasse2(m_program);
+            m_sun.parametrerPasse2(m_program);
 
             int nbRegionsVisibles = 0;
             for(int i=0; i< m_nbRegions*m_nbRegions; i++)
@@ -160,6 +149,7 @@ public:
                     nbRegionsVisibles++;
                 }
             
+            m_sun.drawSun(m_camera);
             //printf(" -> %d\n",nbRegionsVisibles);
         }
         return 1;
@@ -168,7 +158,7 @@ public:
 protected:
     Transform m_model;
     int m_nbRegions;
-    Orbiter m_camera;
+    Camera m_camera;
     Sun m_sun;
     GLuint m_vao;
     GLuint m_buffer;

@@ -41,7 +41,7 @@ Transform Orbiter::view( ) const
 {
     return Translation( -m_position.x, -m_position.y, -m_size ) 
         * RotationX(m_rotation.x) * RotationY(m_rotation.y) 
-        * Translation( - Vector(m_center) ); 
+        * Translation( - Vector(m_center) );
 }
 
 Transform Orbiter::projection( const float width, const float height, const float fov ) const

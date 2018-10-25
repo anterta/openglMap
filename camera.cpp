@@ -40,7 +40,7 @@ void Camera::orienter(int xRel, int yRel)
     m_deplacementLateral = tmp(m_deplacementLateral);
 }
 
-void Camera::deplacer()
+void Camera::deplacer(Terrain terrain)
 {
     // Orientation avec la souris
     int mx, my;
@@ -63,6 +63,9 @@ void Camera::deplacer()
 
     if(state[SDL_SCANCODE_RIGHT])
         m_position = m_position + m_deplacementLateral * m_vitesse;
+
+    m_position.y = terrain.getHauteur(m_position.x,-m_position.z);
+    m_position.y+=30;
 }
 
 Transform Camera::lookAt()
