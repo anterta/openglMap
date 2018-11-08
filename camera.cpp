@@ -65,7 +65,7 @@ void Camera::deplacer(Terrain terrain)
         m_position = m_position + m_deplacementLateral * m_vitesse;
 
     m_position.y = terrain.getHauteur(m_position.x,-m_position.z);
-    m_position.y+=30;
+    m_position.y+=3;
 }
 
 Transform Camera::lookAt()

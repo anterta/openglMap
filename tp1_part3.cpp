@@ -132,11 +132,10 @@ public:
             Transform v= m_camera.lookAt();
             Transform p= Perspective(70.0, (double) window_width() / window_height(), 0.1, 10000.0);
             Transform mvp= p * v * m;
-            Transform mv= v * m;
             
             program_uniform(m_program, "mvpMatrix", mvp);
-            program_uniform(m_program, "nbCubes", m_nbRegions*64); 
-            program_uniform(m_program, "normalMatrix", mv.normal());   
+            program_uniform(m_program, "vMatrix", v);
+            program_uniform(m_program, "nbCubes", m_nbRegions*64);   
 
             m_textures.blindTextures(m_program);
 

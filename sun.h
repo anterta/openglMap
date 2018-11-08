@@ -126,7 +126,6 @@ class Sun
 
 		program_uniform(m_texture_program, "mvpMatrix", mvp);
 		program_uniform(m_texture_program, "mvMatrix", mv);
-		program_uniform(m_texture_program, "normalMatrix", mv.normal());
 
 		for(int i=0; i< terrain.nbRegions()*terrain.nbRegions(); i++)
 			if(terrain.visbleCamera(i,mvp))
@@ -155,8 +154,7 @@ class Sun
 		Transform mvp= m_ortho * v;
 
 		program_uniform(program, "sunMvpMatrix", mvp);
-		program_uniform(program, "sunMvMatrix", v);
-		program_uniform(program, "sunNormalMatrix", v.normal());
+		program_uniform(program, "sunInverseMatrix", v.inverse());
 
 		// configure l'unite 0
 		glActiveTexture(GL_TEXTURE0);
