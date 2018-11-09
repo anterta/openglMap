@@ -56,6 +56,7 @@ void Terrain::make_terrain( const char *filename, const int nbRegions ) {
                     m_mesh.normal(normalize(Vector(hL - hR,2.0,hD - hU)));
                 }
 
+    m_water = read_mesh("data/carre.obj");
 }
 
 void Terrain::createBuffer(GLuint &buffer) {
@@ -79,6 +80,11 @@ void Terrain::createBuffer(GLuint &buffer) {
     glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, (const GLvoid *) offset);
     glVertexAttribDivisor(2, 1);
     glEnableVertexAttribArray(2);
+
+
+    // water shaders
+    m_water_program= read_program("src/tp1_part3_shaderWater.glsl");
+    program_print_errors(m_water_program);
     
     m_mesh.release();
 }
@@ -167,4 +173,23 @@ float Terrain::getHauteur(float x, float y) {
     y -= (float)minY;
     float d = sqrt(x*x+y*y)/sqrt(2.0);
     return h1 + d*(h1-h2);
+}
+
+void Terrain::drawRegion(int i, int vertex_count) {
+    glDrawArraysInstancedBaseInstance(GL_TRIANGLES, 0, vertex_count, m_sizeRegion, i*m_sizeRegion);
+}
+
+void Terrain::drawWaterRegion(std::vector<int> regions, int vertex_count, GLuint &vao, Transform view, Transform projection) {
+    glBindVertexArray(vao);
+    glUseProgram(m_water_program);
+    
+    printf("test %d\n", regions.size());
+    for(int i=0; i<regions.size(); i++)
+        if(m_min_max[regions[i]].x <= m_nbRegions*0.2113) {
+            vec3 p = m_mesh.positions()[regions[i]*m_sizeRegion];
+            Transform t = Translation(Vector(p.x,1+m_nbRegions*.2112,p.z)) * Scale(64,1,-64);
+            program_uniform(m_water_program, "pos", p);
+            program_uniform(m_water_program, "mvpMatrix", projection*view*t);
+            draw(m_water,m_water_program);
+        }
 }

@@ -21,6 +21,7 @@ uniform int nbCubes;
 
 uniform mat4 sunMvpMatrix;
 uniform mat4 sunInverseMatrix;
+uniform mat4 inverseMatrix;
 
 out vec4 vertex_position;
 out vec4 vertex_position_sun;
@@ -30,25 +31,65 @@ out vec3 sun_direction;
 out vec3 obs_direction;
 
 out vec3 cube_pos;
+flat out int tailleTerrain;
 
 flat out int choixTexture;
 
+uniform float time;
+const int numWaves = 1;
+const float amplitude[2] = float[](.4,.1);
+vec2 direction[2] = vec2[](vec2(cos(M_PI),sin(M_PI)),vec2(cos(M_PI/3),sin(M_PI/3)));
+uniform vec2 direction1;
+uniform vec2 direction2;
+
+float wave(int i, float x, float y) {
+    float frequency = 2*M_PI/(8 * M_PI / (i + 1));
+    float phase = amplitude[i] * frequency;
+    float theta = dot(direction[i], vec2(x, y));
+    return (.4/(i+1)) * sin(theta * frequency + time * phase);
+}
+
+float waveHeight(float x, float y) {
+    float height = 0.0;
+    for (int i = 0; i < numWaves; ++i)
+        height += wave(i, x, y);
+    return height;
+}
+
+vec2 dWaved(int i, float x, float y) {
+    float frequency = 2*M_PI/(8 * M_PI / (i + 1));
+    float phase = (1 + 2*i) * frequency;
+    float theta = dot(direction[i], vec2(x, y));
+    float Ax = amplitude[i] * direction[i].x * frequency;
+    float Ay = amplitude[i] * direction[i].y * frequency;
+    return vec2(Ax,Ay) * cos(theta * frequency + time * phase);
+}
+
+vec3 waveNormal(float x, float y) {
+    vec2 d = vec2(0,0);
+    for (int i = 0; i < numWaves; ++i) {
+        d += dWaved(i, x, y);
+    }
+    vec3 n = vec3(-d.x, 1.0, -d.y);
+    return normalize(n);
+}
+
 void main( )
 {
+    tailleTerrain = nbCubes;
+    
     vec3 p = instance_position;
     float y = p.y - random2d(p.xz);
-    float s = float(nbCubes)/15.0;
-    vertex_normal= (vMatrix * vec4(normal,0)).xyz;
+    vertex_normal= normal;//(vMatrix * vec4(normal,0)).xyz;
 
-    if(y < 0.05*s) {
-        choixTexture = 0;
-        p.y = 0.05*s +  (sin(p.x*5.0 + p.z*1.0)+random2d(p.xz))/2;
-        vertex_normal= (vMatrix * vec4(0,1,0,0)).xyz; // todo mouvement en fonction du temps
-    } else if(y < 0.3*s)
-        choixTexture = 1;
-    else if(y < 0.5*s)
+    if(y < 0.0033*nbCubes) {
         choixTexture = 2;
-    else if(y < 0.7*s)
+        p.y = p.y-.5;
+    } else if(y < 0.02*nbCubes)
+        choixTexture = 1;
+    else if(y < 0.033*nbCubes)
+        choixTexture = 2;
+    else if(y < 0.0467*nbCubes)
         choixTexture = 3;
     else
         choixTexture = 4;
@@ -59,10 +100,11 @@ void main( )
     vertex_position= mvpMatrix * vec4(p, 1);
     vertex_position_sun= sunMvpMatrix * vec4(p, 1);
     vertex_texcoord= texcoord;
-    vec3 position_sun = (vMatrix * (sunInverseMatrix) * vec4(0,0,0,1)).xyz;
-    obs_direction = vec3(0,0,0) - (vMatrix * vec4(p, 1)).xyz;
-    sun_direction = position_sun + obs_direction;
-    cube_pos = p;
+    vec3 position_sun = (sunInverseMatrix * vec4(0,0,0,1)).xyz;
+    vec3 position_obs = (inverseMatrix * vec4(0,0,0,1)).xyz;
+    obs_direction = position_obs - p;
+    sun_direction = position_sun - p;//position_sun + obs_direction;
+    cube_pos = position;
 }
 #endif
 
@@ -77,6 +119,7 @@ in vec3 sun_direction;
 in vec3 obs_direction;
 
 in vec3 cube_pos;
+flat in int tailleTerrain;
 
 flat in int choixTexture;
 
@@ -100,7 +143,7 @@ void main( )
         break;
         case 1:
             color= texture(grass_side_texture, vertex_texcoord);
-            if( cube_pos.y > 0.49)
+            if( cube_pos.y > 0.49) 
                 color= texture(grass_top_texture, vertex_texcoord);
         break;
         case 2:
@@ -119,16 +162,17 @@ void main( )
     vec4 shadowColor = texture( zBuffer_texture, ShadowCoord.xy);
     
     float visibility = 1.0;
-    if ( shadowColor.r  < ShadowCoord.z - 0.01)
+    if ( shadowColor.r  < ShadowCoord.z - 0.02)
         visibility = 0.4;
 
 
-    float m = 16;
-    float k = 0.8;
-    float intensity = 1000000;
+    float m = 2;
+    float k = 0.9;
+    int intensity = 2*tailleTerrain*tailleTerrain;
     vec3 h = (sun_direction+obs_direction)/2;
     float dist_sun = length(sun_direction);
     float cos_theta= clamp(dot( vertex_normal, normalize(h)),0,1);
+
     float diffus = 1/M_PI;
     float reflechissant = ((m+8)/8*M_PI)*pow(cos_theta,m);
     float mixte = intensity * (k*diffus + (1-k)*reflechissant)/(dist_sun*dist_sun);
@@ -136,15 +180,16 @@ void main( )
     float nuit = dot(vec3(0,1,0),normalize(sun_direction));
     nuit += (fract(sin(nuit)*100000.0))/8;
     if(nuit < 0.25)
-        visibility = max(0., nuit*4+0.1);
+        visibility = max(0., min(visibility, nuit*4+0.1));
 
     
     float r = 1 - nuit/2;
     float g = 0.5;
     float b = 4*nuit/10 + 0.1;
 
-    fragment_color= color * mixte * visibility * 0.8
-                    + vec4(r,g,b,1) * mixte * visibility * 0.2;
+    vec3 col =  color.xyz * mixte * visibility * 0.8
+                    + vec3(r,g,b) * mixte * visibility * 0.2;
+    fragment_color= vec4(col,color.a);
 }
 
 #endif

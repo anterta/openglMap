@@ -1,11 +1,6 @@
 
-#include "mesh.h"
-#include "wavefront.h"
-
 #include "orbiter.h"
 #include "program.h"
-#include "uniforms.h"
-#include "draw.h"
 #include "mes_textures.h"
 #include "terrain.h"
 #include "sun.h"
@@ -23,7 +18,7 @@ public:
         m_nbRegions = 10;
         
         // charge le cube et le terrain
-        Mesh mesh= read_mesh("data/cube.obj");
+        Mesh mesh= read_mesh("data/flat_bbox.obj");
         if(mesh == Mesh::error()) return -1;
         m_terrain.make_terrain("data/Clipboard02.png", m_nbRegions);
 
@@ -87,6 +82,7 @@ public:
         glDepthFunc(GL_LESS);                       // ztest, conserver l'intersection la plus proche de la camera
         glEnable(GL_DEPTH_TEST);                    // activer le ztest
 
+        m_time = 0;
         return 0;
     }
     
@@ -103,10 +99,18 @@ public:
 
     int update( const float time, const float delta )
     {
-        m_sun.rotation(0, 0.05*m_nbRegions);
+        m_sun.rotation(0, 0.01*m_nbRegions*m_nbRegions);
+        m_time += .01*m_nbRegions*m_nbRegions;
         return 0;
     }
-    
+
+    float uniformRandomInRange(float min, float max) {
+        assert(min < max);
+        double n = (double) rand() / (double) RAND_MAX;
+        double v = min + n * (max - min);
+        return v;
+    }
+
     // dessiner une nouvelle image
     int render( )
     {
@@ -114,7 +118,7 @@ public:
         
         m_camera.deplacer(m_terrain);
         
-        m_sun.passe1(m_vao, m_program, m_terrain, m_vertex_count,m_textures); 
+        m_sun.passe1(m_vao, m_terrain, m_vertex_count); 
 
         if(key_state(' ')) {
             // montrer le resultat de la passe 1 copie le framebuffer sur la fenetre
@@ -127,29 +131,44 @@ public:
 
             glBindVertexArray(m_vao);
             glUseProgram(m_program);
+glEnable(GL_BLEND);
+glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
 
             Transform m= m_model;
             Transform v= m_camera.lookAt();
-            Transform p= Perspective(70.0, (double) window_width() / window_height(), 0.1, 10000.0);
+            Transform p= Perspective(70.0, (double) window_width() / window_height(), 0.1, 1500.0);
             Transform mvp= p * v * m;
             
             program_uniform(m_program, "mvpMatrix", mvp);
             program_uniform(m_program, "vMatrix", v);
-            program_uniform(m_program, "nbCubes", m_nbRegions*64);   
+		    program_uniform(m_program, "inverseMatrix", v.inverse());
+            program_uniform(m_program, "nbCubes", m_nbRegions*64);
+
+vec2 direction[4];
+    for (int i = 0; i < 4; ++i) {
+        float angle = uniformRandomInRange(-M_PI/3, M_PI/3);
+        direction[i] = vec2(cos(angle),sin(angle));
+    }
+            program_uniform(m_program, "direction1", direction[0]);
+            program_uniform(m_program, "direction2", direction[1]);
+            program_uniform(m_program, "time", m_time);  
 
             m_textures.blindTextures(m_program);
 
             m_sun.parametrerPasse2(m_program);
 
             int nbRegionsVisibles = 0;
+            std::vector<int> regions;
             for(int i=0; i< m_nbRegions*m_nbRegions; i++)
                 if(m_terrain.visbleCamera(i,mvp)) {
                     m_terrain.drawRegion(i,m_vertex_count);
                     nbRegionsVisibles++;
+                    regions.push_back(i);
                 }
             
-            m_sun.drawSun(m_camera);
-            //printf(" -> %d\n",nbRegionsVisibles);
+            m_sun.drawSun(v, p);
+            m_terrain.drawWaterRegion(regions,m_vertex_count,m_vao,v,p);
+            printf(" -> %d\n",nbRegionsVisibles);
         }
         return 1;
     }
@@ -165,6 +184,7 @@ protected:
     GLuint m_program;
     int m_vertex_count;
     int m_instance_count;
+    float m_time;
 
     Terrain m_terrain;
     MesTextures m_textures;

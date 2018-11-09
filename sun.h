@@ -101,7 +101,7 @@ class Sun
 		release_program(m_texture_program);
 	}
 
-	void passe1(GLuint &vao, GLuint &program, Terrain terrain, int vertex_count, MesTextures textures) {
+	void passe1(GLuint &vao, Terrain terrain, int vertex_count) {
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_framebuffer);
 		glViewport(0, 0, m_framebuffer_width, m_framebuffer_height);
 		glClearColor(1, 1, 0, 1);
@@ -177,12 +177,10 @@ class Sun
 
 	void addMesh(Mesh objet) { m_mesh = objet; }
 
-	void drawSun(Camera &camera) {
+	void drawSun(Transform view, Transform projection) {
 		Point p = m_sun.position();
 		Transform t = Translation(Vector(p)) * Scale(50.0,50.0,50.0);
-		Transform v= camera.lookAt();
-		Transform projection = Perspective(70.0, (double) window_width() / window_height(), 0.1, 10000.0);
-		draw(m_mesh,t,v,projection);
+		draw(m_mesh,t,view,projection);
 	}
 	
 	protected:
