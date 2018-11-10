@@ -1,4 +1,5 @@
 #include "terrain.h"
+#include "time.h"
 
 void Terrain::make_terrain( const char *filename, const int nbRegions ) {
     m_nbRegions = nbRegions;
@@ -183,7 +184,10 @@ void Terrain::drawWaterRegion(std::vector<int> regions, int vertex_count, GLuint
     glBindVertexArray(vao);
     glUseProgram(m_water_program);
     
-    printf("test %d\n", regions.size());
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    //printf("test %d\n", regions.size());
     for(int i=0; i<regions.size(); i++)
         if(m_min_max[regions[i]].x <= m_nbRegions*0.2113) {
             vec3 p = m_mesh.positions()[regions[i]*m_sizeRegion];
@@ -192,4 +196,22 @@ void Terrain::drawWaterRegion(std::vector<int> regions, int vertex_count, GLuint
             program_uniform(m_water_program, "mvpMatrix", projection*view*t);
             draw(m_water,m_water_program);
         }
+}
+
+std::vector<int> Terrain::render(GLuint program, Transform view, Transform projection, int nbVertex) {
+    Transform mvp= projection * view;
+
+    program_uniform(program, "mvpMatrix", mvp);
+    program_uniform(program, "vMatrix", view);
+    program_uniform(program, "inverseMatrix", view.inverse());
+    program_uniform(program, "nbCubes", m_nbRegions*64); 
+
+    std::vector<int> regions;
+    for(int i=0; i< m_nbRegions*m_nbRegions; i++)
+        if(visbleCamera(i,mvp)) {
+            drawRegion(i,nbVertex);
+            regions.push_back(i);
+        }
+
+    return regions;
 }

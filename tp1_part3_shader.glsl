@@ -176,7 +176,7 @@ void main( )
     float diffus = 1/M_PI;
     float reflechissant = ((m+8)/8*M_PI)*pow(cos_theta,m);
     float mixte = intensity * (k*diffus + (1-k)*reflechissant)/(dist_sun*dist_sun);
-
+/*
     float nuit = dot(vec3(0,1,0),normalize(sun_direction));
     nuit += (fract(sin(nuit)*100000.0))/8;
     if(nuit < 0.25)
@@ -188,8 +188,8 @@ void main( )
     float b = 4*nuit/10 + 0.1;
 
     vec3 col =  color.xyz * mixte * visibility * 0.8
-                    + vec3(r,g,b) * mixte * visibility * 0.2;
-    fragment_color= vec4(col,color.a);
+                    + vec3(r,g,b) * mixte * visibility * 0.2;*/
+    fragment_color= vec4(color.xyz * visibility,color.a);
 }
 
 #endif

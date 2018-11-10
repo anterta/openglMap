@@ -22,6 +22,7 @@ class Terrain
 
     void drawRegion(int i, int vertex_count);
     void drawWaterRegion(std::vector<int> regions, int vertex_count, GLuint &vao, Transform view, Transform projection);
+    std::vector<int> render(GLuint program, Transform view, Transform projection, int nbVertex);
 
     int sizeRegion() { return m_sizeRegion; }
     Mesh mesh() { return m_mesh; }
