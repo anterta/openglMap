@@ -40,7 +40,7 @@ void Camera::orienter(int xRel, int yRel)
     m_deplacementLateral = tmp(m_deplacementLateral);
 }
 
-void Camera::deplacer(Terrain terrain)
+void Camera::deplacer()
 {
     // Orientation avec la souris
     int mx, my;
@@ -63,19 +63,19 @@ void Camera::deplacer(Terrain terrain)
 
     if(state[SDL_SCANCODE_RIGHT])
         m_position = m_position + m_deplacementLateral * m_vitesse;
-
-    m_position.y = terrain.getHauteur(m_position.x,-m_position.z);
-    m_position.y+=50;
 }
 
-Transform Camera::lookAt()
+Transform Camera::lookAt(Vector t, bool inverse)
 {
-    return Rotation(m_axeLateral, m_phi) * Rotation(m_axeVertical, m_theta) * Translation( -m_position.x, -m_position.y, -m_position.z );
+    if(inverse)
+        return Rotation(m_axeLateral, -m_phi) * Rotation(m_axeVertical, m_theta) * Translation( -m_position.x+t.x, -m_position.y+t.y, -m_position.z+t.z );
+
+    return Rotation(m_axeLateral, m_phi) * Rotation(m_axeVertical, m_theta) * Translation( -m_position.x+t.x, -m_position.y+t.y, -m_position.z+t.z );;
 }
 
 
 // Getters et Setters
-void Camera::setPointcible(Vector pointCible)
+void Camera::setPointcible(Point pointCible)
 {
     // Calcul du vecteur orientation
     m_orientation = m_position - pointCible;
@@ -122,7 +122,7 @@ void Camera::setPointcible(Vector pointCible)
 }
 
 
-void Camera::setPosition(Vector position)
+void Camera::setPosition(Point position)
 {
     m_position = position;
 }
@@ -152,9 +152,11 @@ void Camera::setVitesse(double vitesse)
 }
 
 Point Camera::position( )
-{
+{/*
     Transform t= lookAt();     // passage monde vers camera
     Transform tinv= t.inverse();            // l'inverse, passage camera vers monde
     
     return tinv(Point(0, 0, 0));        // la camera se trouve a l'origine, dans le repere camera...
+*/
+    return Point(m_position);
 }

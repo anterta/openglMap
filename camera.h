@@ -3,7 +3,6 @@
 
 #include "mat.h"
 #include "vec.h"
-#include "terrain.h"
 
 class Camera
 {
@@ -14,11 +13,11 @@ class Camera
     ~Camera();
 
     void orienter(int xRel, int yRel);
-    void deplacer(Terrain terrain);
-    Transform lookAt();
+    void deplacer();
+    Transform lookAt(Vector t = Vector(0,0,0), bool inverse = false);
 
-    void setPointcible(Vector pointCible);
-    void setPosition(Vector position);
+    void setPointcible(Point pointCible);
+    void setPosition(Point position);
 
     double getSensibilite() const;
     double getVitesse() const;
@@ -41,7 +40,7 @@ class Camera
     Vector m_axeVertical;
     Vector m_axeLateral;
 
-    Vector m_position;
+    Point m_position;
 
     double m_sensibilite;
     double m_vitesse;

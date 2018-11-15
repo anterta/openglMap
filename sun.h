@@ -21,7 +21,7 @@ class Sun
 	}
 
 	bool initialise() {
-		m_texture_program= read_program("src/tp1_part3_shaderTexture.glsl");
+		m_texture_program= read_program("src/depthShader.glsl");
 		program_print_errors(m_texture_program);
 
 		return m_framebuffer.initialiseFrameBuffer(m_frameBuffer_width,m_frameBuffer_height);
@@ -33,13 +33,10 @@ class Sun
 		release_program(m_texture_program);
 	}
 
-	void passe1(GLuint &vao, Terrain terrain, int vertex_count) {
-		m_framebuffer.bindFrameBuffer();
-		glClearColor(1, 1, 0, 1);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	void passe1(Terrain terrain, int vertex_count) {
+		m_framebuffer.bindFrameBuffer('y');
 
 		// draw "classique"
-		glBindVertexArray(vao);
 		glUseProgram(m_texture_program);
 
 		int size = terrain.nbRegions();
@@ -49,12 +46,11 @@ class Sun
 		Point pmin = r( Point(-65*size,260*size,1));
 		Point pmax = r( Point(65*size,-260*size,1));
 		
-		Transform v= Lookat(m_sun.position(),m_lookat,Vector(0,0,1));
+		Transform v= view();
 		m_ortho = Ortho(pmin.x,pmax.x,pmin.y,pmax.y,33*size,130*size);
 		Transform mvp= m_ortho * v;
 
 		program_uniform(m_texture_program, "mvpMatrix", mvp);
-		program_uniform(m_texture_program, "mvMatrix", v);
 
 		for(int i=0; i< terrain.nbRegions()*terrain.nbRegions(); i++)
 			if(terrain.visbleCamera(i,mvp))
@@ -71,7 +67,7 @@ class Sun
 		// utilise la texture attachee au framebuffer
 		program_uniform(program, "zBuffer_texture", 0);     // utilise la texture configuree sur l'unite 0
 					
-		Transform v= Lookat(m_sun.position(),m_lookat,Vector(0,0,1));
+		Transform v= view();
 		Transform mvp= m_ortho * v;
 
 		program_uniform(program, "sunMvpMatrix", mvp);
@@ -89,6 +85,10 @@ class Sun
 		Point p = m_sun.position();
 		Transform t = Translation(Vector(p)) * Scale(50.0,50.0,50.0);
 		draw(m_mesh,t,view,projection);
+	}
+
+	Transform view() {
+		return Lookat(m_sun.position(),m_lookat,Vector(0,0,1));
 	}
 	
 	protected:

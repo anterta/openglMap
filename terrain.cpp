@@ -56,8 +56,6 @@ void Terrain::make_terrain( const char *filename, const int nbRegions ) {
 
                     m_mesh.normal(normalize(Vector(hL - hR,2.0,hD - hU)));
                 }
-
-    m_water = read_mesh("data/carre.obj");
 }
 
 void Terrain::createBuffer(GLuint &buffer) {
@@ -67,25 +65,20 @@ void Terrain::createBuffer(GLuint &buffer) {
     size_t size= m_mesh.vertex_buffer_size() + m_mesh.normal_buffer_size();
     glBufferData(GL_ARRAY_BUFFER, size, nullptr, GL_STATIC_DRAW);
     
-    // configure l'attribut 1, vec3 position
+    // configure l'attribut 2, vec3 position
     size= m_mesh.vertex_buffer_size();
     glBufferSubData(GL_ARRAY_BUFFER, 0, size, m_mesh.vertex_buffer());
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    glVertexAttribDivisor(1, 1);
-    glEnableVertexAttribArray(1);
-
-    // configure l'attribut 2, vec3 normal
-    size_t offset= size;
-    size= m_mesh.normal_buffer_size();
-    glBufferSubData(GL_ARRAY_BUFFER, offset, size, m_mesh.normal_buffer());
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, (const GLvoid *) offset);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, 0);
     glVertexAttribDivisor(2, 1);
     glEnableVertexAttribArray(2);
 
-
-    // water shaders
-    m_water_program= read_program("src/tp1_part3_shaderWater.glsl");
-    program_print_errors(m_water_program);
+    // configure l'attribut 3, vec3 normal
+    size_t offset= size;
+    size= m_mesh.normal_buffer_size();
+    glBufferSubData(GL_ARRAY_BUFFER, offset, size, m_mesh.normal_buffer());
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 0, (const GLvoid *) offset);
+    glVertexAttribDivisor(3, 1);
+    glEnableVertexAttribArray(3);
     
     m_mesh.release();
 }
@@ -180,38 +173,43 @@ void Terrain::drawRegion(int i, int vertex_count) {
     glDrawArraysInstancedBaseInstance(GL_TRIANGLES, 0, vertex_count, m_sizeRegion, i*m_sizeRegion);
 }
 
-void Terrain::drawWaterRegion(std::vector<int> regions, int vertex_count, GLuint &vao, Transform view, Transform projection) {
-    glBindVertexArray(vao);
-    glUseProgram(m_water_program);
-    
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    //printf("test %d\n", regions.size());
-    for(int i=0; i<regions.size(); i++)
-        if(m_min_max[regions[i]].x <= m_nbRegions*0.2113) {
-            vec3 p = m_mesh.positions()[regions[i]*m_sizeRegion];
-            Transform t = Translation(Vector(p.x,1+m_nbRegions*.2112,p.z)) * Scale(64,1,-64);
-            program_uniform(m_water_program, "pos", p);
-            program_uniform(m_water_program, "mvpMatrix", projection*view*t);
-            draw(m_water,m_water_program);
-        }
-}
-
-std::vector<int> Terrain::render(GLuint program, Transform view, Transform projection, int nbVertex) {
+std::vector<int> Terrain::render(GLuint program, Transform view, Transform projection, int nbVertex, std::vector<int> regionsVisible) {
     Transform mvp= projection * view;
 
     program_uniform(program, "mvpMatrix", mvp);
     program_uniform(program, "vMatrix", view);
     program_uniform(program, "inverseMatrix", view.inverse());
     program_uniform(program, "nbCubes", m_nbRegions*64); 
+    if(regionsVisible.size() > 0)
+    program_uniform(program, "inverse", 1); 
+    else
+    program_uniform(program, "inverse", 0); 
 
     std::vector<int> regions;
-    for(int i=0; i< m_nbRegions*m_nbRegions; i++)
-        if(visbleCamera(i,mvp)) {
-            drawRegion(i,nbVertex);
-            regions.push_back(i);
+    int t =0;
+    /*
+    if(regionsVisible.size() > 0) {
+        for(int i= 0; i<regionsVisible.size(); i++)
+                drawRegion(regionsVisible[i],nbVertex);
+        regions = regionsVisible;
+    } else {*/
+        for(int i=0; i< m_nbRegions*m_nbRegions; i++) {
+            bool test = false;
+            if(t<regions.size() && regions[t] == i) {
+                test = true;
+                t++;
+            }
+            if(test || visbleCamera(i,mvp)) {
+                drawRegion(i,nbVertex);
+                regions.push_back(i);
+            }
         }
 
     return regions;
+}
+
+void Terrain::hauteurCamera(Camera &cam) {
+    Point p = cam.position();
+    p.y = getHauteur(p.x,-p.z)+5;
+    cam.setPosition(p);
 }

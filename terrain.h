@@ -10,6 +10,7 @@
 #include "uniforms.h"
 #include "draw.h"
 #include "program.h"
+#include "camera.h"
 
 class Terrain
 {
@@ -21,8 +22,7 @@ class Terrain
     bool visbleCamera(int i, Transform mvp);
 
     void drawRegion(int i, int vertex_count);
-    void drawWaterRegion(std::vector<int> regions, int vertex_count, GLuint &vao, Transform view, Transform projection);
-    std::vector<int> render(GLuint program, Transform view, Transform projection, int nbVertex);
+    std::vector<int> render(GLuint program, Transform view, Transform projection, int nbVertex, std::vector<int> regionsVisible = {});
 
     int sizeRegion() { return m_sizeRegion; }
     Mesh mesh() { return m_mesh; }
@@ -30,6 +30,7 @@ class Terrain
     int nbRegions() { return m_nbRegions; }
     vec3 get(int x, int y) { return m_mesh.positions()[indice(x,y)]; }
     float getHauteur(float x, float y);
+    void hauteurCamera(Camera &cam);
 
     protected:
     int indice(int x,int y) {
@@ -38,11 +39,9 @@ class Terrain
     void createMeshWater();
 
     Mesh m_mesh;
-    Mesh m_water;
     int m_nbRegions;
     int m_sizeRegion = 64*64;
     std::vector<vec2> m_min_max;
-	GLuint m_water_program;
 };
 
 #endif

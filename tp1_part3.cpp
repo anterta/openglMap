@@ -5,6 +5,7 @@
 #include "terrain.h"
 #include "sun.h"
 #include "camera.h"
+#include "water.h"
 
 
 #include "app_time.h"
@@ -19,7 +20,7 @@ public:
         m_nbRegions = 10;
         
         // charge le cube et le terrain
-        Mesh mesh= read_mesh("data/flat_bbox.obj");
+        Mesh mesh= read_mesh("data/cube.obj");
         if(mesh == Mesh::error()) return -1;
         m_terrain.make_terrain("data/Clipboard02.png", m_nbRegions);
 
@@ -56,13 +57,14 @@ public:
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
         glEnableVertexAttribArray(0);
 
-        // configure l'attribut 3, vec2 textcoord
+        // configure l'attribut 1, vec2 textcoord
         size_t offset= size;
         //offset= offset + size;
         size= mesh.texcoord_buffer_size();
+        printf("size : %d\n",size);
         glBufferSubData(GL_ARRAY_BUFFER, offset, size, mesh.texcoord_buffer());
-        glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, 0, (const GLvoid *) offset);
-        glEnableVertexAttribArray(3);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (const GLvoid *) offset);
+        glEnableVertexAttribArray(1);
 
         m_textures.read_textures();
                     
@@ -83,6 +85,7 @@ public:
         glDepthFunc(GL_LESS);                       // ztest, conserver l'intersection la plus proche de la camera
         glEnable(GL_DEPTH_TEST);                    // activer le ztest
 
+        m_water.initialiser(m_nbRegions);
         m_time = 0;
         return 0;
     }
@@ -101,7 +104,7 @@ public:
     int update( const float time, const float delta )
     {
         m_sun.rotation(0, 0.005*m_nbRegions*m_nbRegions);
-        m_time += .01*m_nbRegions*m_nbRegions;
+        m_water.move();
         return 0;
     }
 
@@ -114,31 +117,63 @@ public:
 
     // dessiner une nouvelle image
     int render( )
-    {
-		glClearColor(0.2f, 0.2f, 0.2f, 1.f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    {        
+        glBindVertexArray(m_vao);
+            glClearColor(0.2f, 0.2f, 0.2f, 1.f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        m_camera.deplacer();
+        m_terrain.hauteurCamera(m_camera);
         
-        m_camera.deplacer(m_terrain);
-        
-        m_sun.passe1(m_vao, m_terrain, m_vertex_count); 
+        m_sun.passe1(m_terrain, m_vertex_count); 
 
-        if(key_state(' ')) {
+        if(key_state('d')) {
             // montrer le resultat de la passe 1 copie le framebuffer sur la fenetre
             m_sun.showFramebuffer();
         } else {
-            glBindVertexArray(m_vao);
+            // Refraction
             glUseProgram(m_program);
-
+            glClearColor(0.2f, 0.2f, 0.2f, 1.f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             m_textures.blindTextures(m_program);
+
             m_sun.parametrerPasse2(m_program);
 
+            m_water.bindRefractionFrameBuffer(m_program);
             Transform v= m_camera.lookAt();
             Transform p= Perspective(70.0, (double) window_width() / window_height(), 0.1, 1500.0);
+
             
             std::vector<int> regions = m_terrain.render(m_program, v, p, m_vertex_count);
-            
-            m_sun.drawSun(v, p);
-            m_terrain.drawWaterRegion(regions,m_vertex_count,m_vao,v,p);
+            m_water.unbindRefractionFrameBuffer();
+
+            // Reflection
+            glUseProgram(m_program);
+            glClearColor(0.2f, 0.2f, 0.2f, 1.f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            m_sun.parametrerPasse2(m_program);
+
+            v= m_water.bindReflectionFrameBuffer(m_program, m_camera);
+            m_terrain.render(m_program, v, p, m_vertex_count, regions);
+            m_water.unbindReflectionFrameBuffer();
+
+
+            if(key_state('e')) {
+                m_water.showReflection();
+            } else if(key_state('a')) {
+                m_water.showRefraction();
+            } else {
+                glUseProgram(m_program);
+
+                m_sun.parametrerPasse2(m_program);
+
+                Transform v= m_camera.lookAt();
+                
+                m_terrain.render(m_program, v, p, m_vertex_count);                
+
+                m_sun.drawSun(v, p);
+                m_water.show(v,p, m_camera, m_terrain, m_sun, regions);
+            }
         }
         return 1;
     }
@@ -155,6 +190,7 @@ protected:
     int m_vertex_count;
     int m_instance_count;
     float m_time;
+    Water m_water;
 
     Terrain m_terrain;
     MesTextures m_textures;
