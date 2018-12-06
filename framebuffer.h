@@ -38,16 +38,20 @@ class Framebuffer
 
      
     void unbindCurrentFrameBuffer() {//call to switch to default frame buffer
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0, 0, window_width(), window_height());
     }
      
-    bool initialiseFrameBuffer(int width, int height) {
+    bool initialiseFrameBuffer(int width, int height, bool depth = false) {
         m_frameBuffer_width = width;
         m_frameBuffer_height = height;
-        m_frameBuffer = createFrameBuffer();
-        m_colorTexture = createTextureAttachment(width,height);
-        //m_depthTexture = createDepthTextureAttachment(width,height);
+        if(depth) {
+            m_frameBuffer = createDepthFrameBuffer();
+            m_depthTexture = createDepthTextureAttachment(width,height);
+        } else {
+            m_frameBuffer = createFrameBuffer();
+            m_colorTexture = createTextureAttachment(width,height);
+        }
         unbindCurrentFrameBuffer();
         return check();
     }
@@ -88,10 +92,26 @@ class Framebuffer
 			
         glGenFramebuffers(1,&m_frameBuffer);
         //generate name for frame buffer
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_frameBuffer);
+        glBindFramebuffer(GL_FRAMEBUFFER, m_frameBuffer);
         //create the framebuffer
         glDrawBuffer(GL_COLOR_ATTACHMENT0);
         //indicate that we will always render to color attachment 0
+        return m_frameBuffer;
+    }
+
+
+    GLuint createDepthFrameBuffer() {
+		// Vérification d'un éventuel ancien FBO
+		if(glIsFramebuffer(m_frameBuffer) == GL_TRUE)
+			glDeleteFramebuffers(1, &m_frameBuffer);
+			
+        glGenFramebuffers(1,&m_frameBuffer);
+        //generate name for frame buffer
+        glBindFramebuffer(GL_FRAMEBUFFER, m_frameBuffer);
+        //create the framebuffer
+        glDrawBuffer(GL_NONE);
+        //indicate that we will not color attachment
+        glReadBuffer(GL_NONE);
         return m_frameBuffer;
     }
 
@@ -108,7 +128,7 @@ class Framebuffer
         
         //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, m_colorTexture, 0);
+        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, m_colorTexture, 0);
         return m_colorTexture;
     }
      
@@ -123,7 +143,7 @@ class Framebuffer
 				
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, m_depthTexture, 0);
+        glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, m_depthTexture, 0);
         return m_depthTexture;
     }
  
@@ -131,7 +151,7 @@ class Framebuffer
         glGenRenderbuffers(1,&m_depthBuffer);
         glBindRenderbuffer(GL_RENDERBUFFER, m_depthBuffer);
         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
-        glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_depthBuffer);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_depthBuffer);
         return m_depthBuffer;
     }
 

@@ -116,7 +116,7 @@ class Water
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
         putTexture(m_water_program);
-        vec4 position_sun = projection*view*(sun.view().inverse()( vec4(0,0,0,1)));
+        vec4 position_sun = (projection*view*sun.view().inverse())( vec4(0,0,0,1));
         program_uniform(m_water_program, "lightPos", position_sun);
 
         

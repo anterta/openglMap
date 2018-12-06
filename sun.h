@@ -13,6 +13,7 @@ class Sun
 	
 	void positionne(const Point pmin, const Point pmax) {
 		m_sun.lookat(pmin, pmax);
+		m_sun.move(-50);
 		m_sun.rotation(-70.0, 0.0);
 	}
 
@@ -21,8 +22,13 @@ class Sun
 	}
 
 	bool initialise() {
+        m_program_cull= read_program("tutos/M2/indirect_cull.glsl");    // tests de visibilite
+        program_print_errors(m_program_cull);
+        
+        m_texture_program= read_program("src/depthShader.glsl");        // affichage des objets visibles
+        program_print_errors(m_texture_program);/*
 		m_texture_program= read_program("src/depthShader.glsl");
-		program_print_errors(m_texture_program);
+		program_print_errors(m_texture_program);*/
 
 		return m_framebuffer.initialiseFrameBuffer(m_frameBuffer_width,m_frameBuffer_height);
 	}
@@ -33,11 +39,8 @@ class Sun
 		release_program(m_texture_program);
 	}
 
-	void passe1(Terrain terrain, int vertex_count) {
+	void passe1(Terrain &terrain, Mesh &cube/* int vertex_count*/) {
 		m_framebuffer.bindFrameBuffer('y');
-
-		// draw "classique"
-		glUseProgram(m_texture_program);
 
 		int size = terrain.nbRegions();
 
@@ -48,13 +51,17 @@ class Sun
 		
 		Transform v= view();
 		m_ortho = Ortho(pmin.x,pmax.x,pmin.y,pmax.y,33*size,130*size);
-		Transform mvp= m_ortho * v;
+		Transform mvp = m_ortho * v;
+		terrain.bindBuffers( mvp );
+		
+		glUseProgram(m_texture_program);
+		program_uniform(m_texture_program, "vpMatrix", mvp);
 
-		program_uniform(m_texture_program, "mvpMatrix", mvp);
-
+		terrain.multiDraw(cube);
+		/*
 		for(int i=0; i< terrain.nbRegions()*terrain.nbRegions(); i++)
 			if(terrain.visbleCamera(i,mvp))
-				terrain.drawRegion(i,vertex_count);
+				terrain.drawRegion(i,vertex_count);*/
 
 		m_framebuffer.unbindCurrentFrameBuffer();
 	}
@@ -65,7 +72,7 @@ class Sun
 
 	void parametrerPasse2(GLuint &program) {
 		// utilise la texture attachee au framebuffer
-		program_uniform(program, "zBuffer_texture", 0);     // utilise la texture configuree sur l'unite 0
+		//program_uniform(program, "zBuffer_texture", 0);     // utilise la texture configuree sur l'unite 0
 					
 		Transform v= view();
 		Transform mvp= m_ortho * v;
@@ -94,6 +101,7 @@ class Sun
 	protected:
 	Orbiter m_sun;
 	Mesh m_mesh;
+	GLuint m_program_cull;
 	GLuint m_texture_program;
 	Framebuffer m_framebuffer;
 	int m_frameBuffer_width = 512;
@@ -109,10 +117,10 @@ class Sun
 		float tz= - (zfar + znear) / (zfar - znear);
 		
 		return Transform(
-			2.f / (right - left),                    0,                     0, tx,
-							0, 2.f / (top - bottom),                     0, ty, 
-			0,                                       0, -2.f / (zfar - znear), tz,
-			0,                                       0,                     0, 1);
+			2.f / (right - left),	0,						0,						tx,
+			0,						2.f / (top - bottom),	0,						ty, 
+			0,						0,						-2.f / (zfar - znear),	tz,
+			0,						0,						0,						1);
 	}
 };
 

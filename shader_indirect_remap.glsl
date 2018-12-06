@@ -12,6 +12,31 @@ float random2d (vec2 st) {
 
 #extension GL_ARB_shader_draw_parameters : require
 
+layout(location= 0) in vec3 position;
+layout(location= 1) in vec2 texcoord;
+layout(location= 2) in vec3 instance_position;
+layout(location= 3) in vec3 normal;
+
+uniform mat4 vpMatrix;
+uniform mat4 viewMatrix;
+
+uniform mat4 sunMvpMatrix;
+uniform mat4 sunInverseMatrix;
+uniform mat4 inverseMatrix;
+
+uniform int nbCubes;
+uniform int inverse;
+uniform int clip;
+
+out vec3 cube_pos;
+flat out int tailleTerrain;
+flat out int choixTexture;
+
+out vec3 vertex_position;
+out vec4 vertex_position_sun;
+out vec2 vertex_texcoord;
+out vec3 sun_direction;
+out vec3 obs_direction;
 
 // row_major : organisation des matrices par lignes...
 layout(binding= 0, row_major, std430) readonly buffer modelData
@@ -19,48 +44,23 @@ layout(binding= 0, row_major, std430) readonly buffer modelData
     mat4 objectMatrix[];
 };
 
-layout(location= 0) in vec3 position;
-layout(location= 1) in vec2 texcoord;
-layout(location= 2) in vec3 instance_position;
-layout(location= 3) in vec3 normal;
-
-
-uniform mat4 mvpMatrix;
-uniform mat4 vMatrix;
-uniform int nbCubes;
-
-uniform int inverse;
-
-uniform mat4 sunMvpMatrix;
-uniform mat4 sunInverseMatrix;
-uniform mat4 inverseMatrix;
-
-uniform int clip;
-
-out vec4 vertex_position;
-out vec4 vertex_position_sun;
-out vec3 vertex_normal;
-out vec2 vertex_texcoord;
-out vec3 sun_direction;
-out vec3 obs_direction;
-
-out vec3 cube_pos;
-flat out int tailleTerrain;
-
-flat out int choixTexture;
-
+layout(binding= 1, std430) readonly buffer remapData
+{
+    uint remap[];
+};
 
 void main( )
 {
     tailleTerrain = nbCubes;
     gl_ClipDistance[0] = clip;
     
-    vec3 p = instance_position;
+    uint id= remap[gl_DrawIDARB];
+    vec4 p = objectMatrix[id] * vec4(position, 1);
+    
     float y = p.y - random2d(p.xz);
-    vertex_normal= normal;//(vMatrix * vec4(normal,0)).xyz;
-
+    
     if(y < 0.0033*nbCubes) {
-    gl_ClipDistance[0] = -clip;
+        gl_ClipDistance[0] = -clip;
         choixTexture = 1;
         //p.y = p.y-.5;
     } else if(y < 0.02*nbCubes)
@@ -72,31 +72,32 @@ void main( )
     else
         choixTexture = 4;
 
-    p= position + p;
-    vertex_position= mvpMatrix * vec4(p, 1);
     if(inverse == 1)
-        vertex_position.z *= -1;
+        p.z *= -1;
+        
+    // position dans le repere camera
+    //vertex_position= vec3(viewMatrix * objectMatrix[id] * modelMatrix * vec4(position, 1));
+    vertex_position= vec3(vpMatrix * p);
+    gl_Position = vpMatrix * p;
 
-    gl_Position= vertex_position;
-    
-    vertex_position_sun= sunMvpMatrix * vec4(p, 1);
-    vertex_texcoord= texcoord;
-    vec3 position_sun = (sunInverseMatrix * vec4(0,0,0,1)).xyz;
-    vec3 position_obs = (inverseMatrix * vec4(0,0,0,1)).xyz;
-    obs_direction = position_obs - p;
-    sun_direction = position_sun - p;
-    cube_pos = position;
+    vertex_position_sun = sunMvpMatrix * p;
+    vertex_texcoord     = texcoord;
+    vec3 position_sun   = (sunInverseMatrix * vec4(0,0,0,1)).xyz;
+    vec3 position_obs   = (inverseMatrix    * vec4(0,0,0,1)).xyz;
+    obs_direction       = position_obs - p.xyz;
+    sun_direction       = position_sun - p.xyz;
+    cube_pos            = position;
 }
 #endif
+
 
 #ifdef FRAGMENT_SHADER
 layout(early_fragment_tests) in;
 uniform sampler2D zBuffer_texture;
 
 in vec2 vertex_texcoord;
-in vec4 vertex_position;
+in vec3 vertex_position;
 in vec4 vertex_position_sun;
-in vec3 vertex_normal;
 in vec3 sun_direction;
 in vec3 obs_direction;
 
@@ -144,9 +145,13 @@ void main( )
     ShadowCoord = ShadowCoord * 0.5 + 0.5;
     vec4 shadowColor = texture( zBuffer_texture, ShadowCoord.xy);
     
-    float visibility = 1.0;
+    float visibility = 1.0;/*
     if ( shadowColor.r  < ShadowCoord.z - 0.01)
-        visibility = 0.4;
+        visibility = 0.4;*/
+
+    vec3 tn= normalize(dFdx(vertex_position));
+    vec3 bn= normalize(dFdy(vertex_position));
+    vec3 vertex_normal = normalize(cross(tn, bn));
 
     float m = 2;
     float k = 0.9;
@@ -157,7 +162,8 @@ void main( )
 
     float diffus = 1/M_PI;
     float reflechissant = ((m+8)/8*M_PI)*pow(cos_theta,m);
-    float mixte = intensity * (k*diffus + (1-k)*reflechissant)/(dist_sun*dist_sun);
+    //float mixte = intensity * (k*diffus + (1-k)*reflechissant)/(dist_sun*dist_sun);
+    float mixte = k*diffus + (1-k)*reflechissant;
 
     float nuit = dot(vec3(0,1,0),normalize(sun_direction));
     nuit += (fract(sin(nuit)*100000.0))/8;

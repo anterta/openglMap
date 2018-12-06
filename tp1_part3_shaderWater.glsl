@@ -1,4 +1,4 @@
-#version 330 core
+#version 430 core
 #define M_PI 3.1415926535897932384626433832795
 
 #ifdef VERTEX_SHADER
@@ -37,6 +37,7 @@ void main(void) {
 #endif
 
 #ifdef FRAGMENT_SHADER
+layout(early_fragment_tests) in;
 
 in vec4 pos;
 in float moveF;
@@ -90,7 +91,7 @@ void main(void)
 
     vec3 h = (dirLight+dirCamera)/2;
     float dist_sun = length(dirLight);
-    float cos_theta= clamp(dot( -normal, normalize(h)),0,1);
+    float cos_theta= clamp(dot( normal, normalize(h)),0,1);
 	float m = 16;
     float reflechissant = ((m+8)/8*M_PI)*pow(cos_theta,m);
 	vec3 specularHighlights = lightColor * reflechissant/(dist_sun*dist_sun);/*
