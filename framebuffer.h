@@ -8,10 +8,8 @@ class Framebuffer
     Framebuffer() {};
 
 	void release() {
-        glDeleteRenderbuffers(1,&m_depthBuffer);
         glDeleteFramebuffers(1,&m_frameBuffer);
-        glDeleteTextures(1,&m_colorTexture);
-        glDeleteTextures(1,&m_depthTexture);
+        glDeleteTextures(1,&m_texture);
 	}
 
 	void show() {
@@ -30,7 +28,7 @@ class Framebuffer
     void passe2() {
 		// configure l'unite 0
 		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, m_colorTexture);
+		glBindTexture(GL_TEXTURE_2D, m_texture);
 		
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
 		unbindCurrentFrameBuffer();
@@ -38,7 +36,7 @@ class Framebuffer
 
      
     void unbindCurrentFrameBuffer() {//call to switch to default frame buffer
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
         glViewport(0, 0, window_width(), window_height());
     }
      
@@ -47,12 +45,13 @@ class Framebuffer
         m_frameBuffer_height = height;
         if(depth) {
             m_frameBuffer = createDepthFrameBuffer();
-            m_depthTexture = createDepthTextureAttachment(width,height);
+            m_texture = createDepthTextureAttachment(width,height);
         } else {
             m_frameBuffer = createFrameBuffer();
-            m_colorTexture = createTextureAttachment(width,height);
+            m_texture = createTextureAttachment(width,height);
         }
         unbindCurrentFrameBuffer();
+        printf(" framebufer %i depthbuffer %i color %i \n",m_frameBuffer,m_texture,m_texture);
         return check();
     }
      
@@ -76,12 +75,16 @@ class Framebuffer
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
 
-	GLuint getColorTexture() {
-        return m_colorTexture;
+    void bindFrameBuffer(vec3 skyColor){
+        glBindTexture(GL_TEXTURE_2D, 0);//To make sure the texture isn't bound
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_frameBuffer);
+        glViewport(0, 0, m_frameBuffer_width, m_frameBuffer_height);
+		glClearColor(skyColor.x, skyColor.y, skyColor.z, 1);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
-     
-    GLuint getDepthTexture(){
-        return m_depthTexture;
+
+	GLuint getBufferTexture() {
+        return m_texture;
     }
  
     private:
@@ -92,7 +95,7 @@ class Framebuffer
 			
         glGenFramebuffers(1,&m_frameBuffer);
         //generate name for frame buffer
-        glBindFramebuffer(GL_FRAMEBUFFER, m_frameBuffer);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_frameBuffer);
         //create the framebuffer
         glDrawBuffer(GL_COLOR_ATTACHMENT0);
         //indicate that we will always render to color attachment 0
@@ -111,16 +114,16 @@ class Framebuffer
         //create the framebuffer
         glDrawBuffer(GL_NONE);
         //indicate that we will not color attachment
-        glReadBuffer(GL_NONE);
+        //glReadBuffer(GL_NONE);
         return m_frameBuffer;
     }
 
     GLuint createTextureAttachment( int width, int height) {
-		if(glIsTexture(m_colorTexture) == GL_TRUE)
-			glDeleteTextures(1, &m_colorTexture);
+		if(glIsTexture(m_texture) == GL_TRUE)
+			glDeleteTextures(1, &m_texture);
 
-		glGenTextures(1, &m_colorTexture);
-        glBindTexture(GL_TEXTURE_2D, m_colorTexture);
+		glGenTextures(1, &m_texture);
+        glBindTexture(GL_TEXTURE_2D, m_texture);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height,
                 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
 
@@ -128,31 +131,25 @@ class Framebuffer
         
         //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, m_colorTexture, 0);
-        return m_colorTexture;
+        glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, m_texture, 0);
+        return m_texture;
     }
      
     GLuint createDepthTextureAttachment(int width, int height){
-		if(glIsRenderbuffer(m_depthTexture) == GL_TRUE)
-			glDeleteRenderbuffers(1, &m_depthTexture);
+		if(glIsRenderbuffer(m_texture) == GL_TRUE)
+			glDeleteRenderbuffers(1, &m_texture);
 
-        glGenTextures(1,&m_depthTexture);
-        glBindTexture(GL_TEXTURE_2D, m_depthTexture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height,
-                0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, nullptr);
+        glGenTextures(1,&m_texture);
+        glBindTexture(GL_TEXTURE_2D, m_texture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT16, width, height,
+                0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
 				
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, m_depthTexture, 0);
-        return m_depthTexture;
-    }
- 
-    GLuint createDepthBufferAttachment(int width, int height) {
-        glGenRenderbuffers(1,&m_depthBuffer);
-        glBindRenderbuffer(GL_RENDERBUFFER, m_depthBuffer);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_depthBuffer);
-        return m_depthBuffer;
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, m_texture, 0);
+        return m_texture;
     }
 
     bool check() {
@@ -167,10 +164,8 @@ class Framebuffer
     }
 
     protected: 
-    GLuint m_depthBuffer;
     GLuint m_frameBuffer;
-    GLuint m_colorTexture;
-    GLuint m_depthTexture;
+    GLuint m_texture;
 
 	int m_frameBuffer_width;
 	int m_frameBuffer_height;

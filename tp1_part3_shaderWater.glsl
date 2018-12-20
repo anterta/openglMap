@@ -5,16 +5,18 @@
 
 layout(location= 0) in vec3 position;
 uniform mat4 mvpMatrix;
+uniform mat4 inverseMatrix;
 uniform float move;
 uniform float waveHeight;
 uniform float waveWidth;
 uniform vec4 lightPos;
+uniform float camOrient;
 
 out vec4 pos;
 out float moveF;
 out float waveHeightF;
 out vec2 textCoords;
-out vec3 dirCamera;
+out float camDir;
 out vec3 dirLight;
 out vec3 lightColor;
 
@@ -23,7 +25,7 @@ void main(void) {
 	waveHeightF = waveHeight;
 	pos = mvpMatrix * vec4(position, 1.0);
 	textCoords = position.xz * waveWidth;
-	dirCamera = normalize( - pos.xyz);
+	camDir = camOrient;
 	dirLight = normalize(pos.xyz - lightPos.xyz);
 
     float nuit = dot(vec3(0,1,0),dirLight);
@@ -43,7 +45,7 @@ in vec4 pos;
 in float moveF;
 in float waveHeightF;
 in vec2 textCoords;
-in vec3 dirCamera;
+in float camDir;
 in vec3 dirLight;
 in vec3 lightColor;
 
@@ -60,7 +62,7 @@ const float reflectivity = 10;
 
 void main(void)
 {
-	vec2 refracCoords = (pos.xy/pos.w)/2+.5;
+	vec2 reflecCoords = (vec2(pos.x,-pos.y)/pos.w)/2+.5;
 	
 	float loop = textCoords.x + moveF;
 	if(loop > .99)
@@ -77,14 +79,12 @@ void main(void)
 	
 	distortion += texture(dudvMap, vec2(loop, loop2)).rg * waveHeightF/2;
 	
-	refracCoords += distortion;
-	refracCoords = clamp(refracCoords, 0.01, 0.99);
+	reflecCoords += distortion;
+	reflecCoords = clamp(reflecCoords, 0.01, 0.99);
 	
-	vec2 reflecCoords = vec2(refracCoords.x,-refracCoords.y+1);
-	
-	vec4 reflectionColour = texture(reflectionTexture, reflecCoords);
-	vec4 refractionColour = texture(refractionTexture, refracCoords); 
+	vec4 reflectionColour = texture(reflectionTexture, reflecCoords); 
 
+/*
 	vec4 normalMapCol = texture(normalMap, distortion);
 	vec3 normal = normalize(vec3(normalMapCol.r * 2. - 1., normalMapCol.b, normalMapCol.g * 2. -1.));
 
@@ -101,8 +101,11 @@ void main(void)
 	specular = pow(specular, shineDamper);
 	vec3 specularHighlights = lightColor * specular * reflectivity;*/
 
-	float factor = clamp(.1 + 2*dot(dirCamera,vec3(0,-1,0)),0,1);
-	fragment_color = mix(reflectionColour, 2*refractionColour, factor);
-	fragment_color = mix(fragment_color, vec4(0, .3, .5, 1), .2);// + vec4(specularHighlights, 1);
+	//float tmp = clamp(2 * dot(dirCamera.xyz/dirCamera.w,vec3(0,0,1)),0,1);
+	//fragment_color = mix(reflectionColour, 2*refractionColour, factor);
+	//fragment_color = mix(fragment_color, vec4(0, .3, .5, 1), .2);// + vec4(specularHighlights, 1);
+	//fragment_color = mix(reflectionColour, vec4(0, .3, .5, 1), factor);// + vec4(specularHighlights, 1);
+	fragment_color = vec4(reflectionColour.xyz, 1 - camDir);
+	fragment_color = mix(fragment_color, vec4(0, .3, .5, .7), .5);
 }
 #endif

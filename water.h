@@ -13,7 +13,7 @@ class Water
     Water() {};
 
     void initialiser(int nbRegions) {
-        heightWater = nbRegions*0.2113;
+        heightWater = float(nbRegions)*0.2113;
         m_reflection.initialiseFrameBuffer(REFLECTION_WIDTH,REFLECTION_HEIGHT);
         m_refraction.initialiseFrameBuffer(REFRACTION_WIDTH,REFRACTION_HEIGHT);
     
@@ -45,12 +45,18 @@ class Water
         glDisable(GL_CLIP_DISTANCE0);
     }
 
-    Transform bindReflectionFrameBuffer(GLuint &program, Camera &cam) {
-        m_reflection.bindFrameBuffer();
+    Transform bindReflectionFrameBuffer(GLuint &program, Camera &cam, Sun &sun) {
+        vec3 skyColor = sun.skyColor();
+        m_reflection.bindFrameBuffer(skyColor);
         glEnable(GL_CLIP_DISTANCE0);
         program_uniform(program, "clip", 1);
         Point p = cam.position();
-        return cam.lookAt(Vector(0,2*(p.y-heightWater),0),true);
+        return cam.lookAt(Vector(0.0,2.0*(p.y-heightWater),0.0),true);
+    }
+
+    Transform inverseCam(Camera &cam) {
+        Point p = cam.position();
+        return cam.lookAt(Vector(0.0,2.0*(p.y-heightWater),0.0),true);
     }
 
     void unbindReflectionFrameBuffer() {
@@ -80,13 +86,13 @@ class Water
         location= glGetUniformLocation(program, "reflectionTexture");
         glUniform1i(location, 0);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D,  m_reflection.getColorTexture());
+        glBindTexture(GL_TEXTURE_2D,  m_reflection.getBufferTexture());
         glBindSampler(0, sampler);
 
         location= glGetUniformLocation(program, "refractionTexture");
         glUniform1i(location, 1);
         glActiveTexture(GL_TEXTURE0 + 1);
-        glBindTexture(GL_TEXTURE_2D, m_refraction.getColorTexture());
+        glBindTexture(GL_TEXTURE_2D, m_refraction.getBufferTexture());
         glBindSampler(1, sampler);
 
         location= glGetUniformLocation(program, "dudvMap");
@@ -108,7 +114,7 @@ class Water
             m_move -= 1;
     }
 
-    void show(Transform view, Transform projection, Camera cam, Terrain terrain, Sun sun, std::vector<int> regions) {
+    void show(Transform view, Transform projection, Camera &cam, Terrain &terrain, Sun &sun) {//, std::vector<int> regions) {
         int nbRegions = terrain.nbRegions();
         glUseProgram(m_water_program);
         
@@ -122,8 +128,10 @@ class Water
         
         vec3 p = terrain.get(nbRegions*32,nbRegions*32);
         Transform t = Translation(Vector(1,1+nbRegions*.2112,1)) * Scale(nbRegions*64,1,-64*nbRegions);
-                program_uniform(m_water_program, "mvpMatrix", projection*view*t);
-                draw(m_mesh,m_water_program);/*
+        program_uniform(m_water_program, "mvpMatrix", projection*view*t);
+        program_uniform(m_water_program, "inverseMatrix", view.inverse());
+        program_uniform(m_water_program, "camOrient", (float)cam.phi());
+        draw(m_mesh,m_water_program);/*
         //printf("test %d\n", regions.size());
         for(int i=0; i<regions.size(); i++)
             if(m_min_max[regions[i]].x <= nbRegions*0.2113) {
@@ -135,8 +143,8 @@ class Water
     }
 
     protected: 
-    int REFLECTION_WIDTH = 640;//320;
-    int REFLECTION_HEIGHT = 360;//180;
+    int REFLECTION_WIDTH = 640;
+    int REFLECTION_HEIGHT = 360;
     int REFRACTION_WIDTH = 1280;
     int REFRACTION_HEIGHT = 720;
 

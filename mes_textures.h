@@ -22,7 +22,6 @@ class MesTextures {
 			glSamplerParameteri(sampler, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 			glSamplerParameteri(sampler, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
 			glSamplerParameteri(sampler, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-			printf("%d %d %d \n", water_texture, grass_top_texture, snow_texture);
 		}
 
 		void blindTextures(GLuint &program) {

@@ -14,7 +14,7 @@ class Sun
 	void positionne(const Point pmin, const Point pmax) {
 		m_sun.lookat(pmin, pmax);
 		m_sun.move(-50);
-		m_sun.rotation(-70.0, 0.0);
+		//m_sun.rotation(0.0, 90.0);
 	}
 
 	void rotation(float x, float y) {
@@ -26,11 +26,9 @@ class Sun
         program_print_errors(m_program_cull);
         
         m_texture_program= read_program("src/depthShader.glsl");        // affichage des objets visibles
-        program_print_errors(m_texture_program);/*
-		m_texture_program= read_program("src/depthShader.glsl");
-		program_print_errors(m_texture_program);*/
+        program_print_errors(m_texture_program);
 
-		return m_framebuffer.initialiseFrameBuffer(m_frameBuffer_width,m_frameBuffer_height);
+		return m_framebuffer.initialiseFrameBuffer(m_frameBuffer_width,m_frameBuffer_height,true);
 	}
 
 	void release() {
@@ -39,29 +37,26 @@ class Sun
 		release_program(m_texture_program);
 	}
 
-	void passe1(Terrain &terrain, Mesh &cube/* int vertex_count*/) {
+	void passe1(Terrain &terrain) {
 		m_framebuffer.bindFrameBuffer('y');
 
 		int size = terrain.nbRegions();
 
-		m_lookat = Point(terrain.get(9*32,9*32));
+		m_lookat = Point(terrain.get(10*32,10*32));
 		Transform r = RotationX(70);
 		Point pmin = r( Point(-65*size,260*size,1));
 		Point pmax = r( Point(65*size,-260*size,1));
-		
+		float tmp = 6*64;
 		Transform v= view();
-		m_ortho = Ortho(pmin.x,pmax.x,pmin.y,pmax.y,33*size,130*size);
+		//m_ortho = Ortho(pmin.x,pmax.x,pmin.y,pmax.y,33*size,130*size);
+		m_ortho = Ortho(-tmp,tmp,-tmp,tmp,900,1700);
 		Transform mvp = m_ortho * v;
 		terrain.bindBuffers( mvp );
 		
 		glUseProgram(m_texture_program);
 		program_uniform(m_texture_program, "vpMatrix", mvp);
 
-		terrain.multiDraw(cube);
-		/*
-		for(int i=0; i< terrain.nbRegions()*terrain.nbRegions(); i++)
-			if(terrain.visbleCamera(i,mvp))
-				terrain.drawRegion(i,vertex_count);*/
+		terrain.multiDraw();
 
 		m_framebuffer.unbindCurrentFrameBuffer();
 	}
@@ -77,8 +72,14 @@ class Sun
 		Transform v= view();
 		Transform mvp= m_ortho * v;
 
+    	float nuit = dot(vec3(0,1,0),normalize(m_sun.position()-m_lookat));
+		//m_skyColor = vec3(0.7 - nuit/2, .35, 3*nuit/10 + 0.1);
+		//m_skyColor = vec3(0.3, 0.5, .7);
+		m_skyColor = vec3(.05 + nuit*0.65,.05 + nuit*0.75,.1 + nuit*.75);
+
 		program_uniform(program, "sunMvpMatrix", mvp);
 		program_uniform(program, "sunInverseMatrix", v.inverse());
+		program_uniform(program, "skyColor", m_skyColor);
 
 		m_framebuffer.passe2();
 	}
@@ -95,8 +96,12 @@ class Sun
 	}
 
 	Transform view() {
-		return Lookat(m_sun.position(),m_lookat,Vector(0,0,1));
+		return Lookat(m_sun.position(),m_lookat,Vector(-1,0,0));
 	}
+
+	vec3 skyColor() {
+		return m_skyColor;
+	}	
 	
 	protected:
 	Orbiter m_sun;
@@ -104,10 +109,11 @@ class Sun
 	GLuint m_program_cull;
 	GLuint m_texture_program;
 	Framebuffer m_framebuffer;
-	int m_frameBuffer_width = 512;
-	int m_frameBuffer_height = 512;
+	int m_frameBuffer_width = 1024;
+	int m_frameBuffer_height = 1024;
 	Transform m_ortho;
 	Point m_lookat;
+	vec3 m_skyColor = vec3(.7,.35,.1);
 
 	private:
 	Transform Ortho( const float left, const float right, const float bottom, const float top, const float znear, const float zfar )
@@ -122,6 +128,8 @@ class Sun
 			0,						0,						-2.f / (zfar - znear),	tz,
 			0,						0,						0,						1);
 	}
+
+	
 };
 
 #endif

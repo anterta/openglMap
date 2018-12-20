@@ -28,6 +28,7 @@ class Camera
     Point position(); // dans le repère Monde
     Vector orientation() {return m_orientation; }
     Vector lateral() { return m_deplacementLateral; }
+    double phi() { return m_phi/90; }
 
 
     private:

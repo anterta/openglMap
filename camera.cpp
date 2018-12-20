@@ -73,7 +73,6 @@ Transform Camera::lookAt(Vector t, bool inverse)
     return Rotation(m_axeLateral, m_phi) * Rotation(m_axeVertical, m_theta) * Translation( -m_position.x+t.x, -m_position.y+t.y, -m_position.z+t.z );;
 }
 
-
 // Getters et Setters
 void Camera::setPointcible(Point pointCible)
 {
