@@ -27,7 +27,10 @@ public:
         }
         
         m_nbRegions = 10;
-        m_terrain.make_terrain("data/Clipboard02.png", m_nbRegions);
+
+        m_billboards.initialiser();
+        m_terrain.make_terrain("data/Clipboard02.png", m_nbRegions, m_billboards);
+        m_billboards.createBuffers();
 
         Point pmin, pmax;
         m_terrain.bounds(pmin, pmax);
@@ -35,14 +38,19 @@ public:
                             Vector(0,1,0),
                             Vector(1,0,0), 0.1*m_nbRegions, 0.05*m_nbRegions);
                  
-        m_sun.positionne(pmin,pmax);
-        
-        if(!m_sun.initialise())  return -1;
+        if(!m_sun.initialise(pmin,pmax)) {
+            printf("Erreur dans la fonction d'initialisation du soleil!\n");
+            return -1;
+        }
 
         m_textures.read_textures();
+        if(!m_water.initialiser(m_nbRegions)) {
+            printf("Erreur dans la fonction d'initialisation de l'eau!\n");
+            return -1;
+        }
 
         // shader program        
-        m_program= read_program("src/shader_indirect_remap.glsl");        // affichage des objets visibles
+        m_program= read_program("src/shader/indirect_remap.glsl");        // affichage des objets visibles
         program_print_errors(m_program);
                 
         // etat openGL par defaut
@@ -52,7 +60,6 @@ public:
         glDepthFunc(GL_LESS);                       // ztest, conserver l'intersection la plus proche de la camera
         glEnable(GL_DEPTH_TEST);                    // activer le ztest
 
-        m_water.initialiser(m_nbRegions);
         return 0;
     }
     
@@ -60,8 +67,6 @@ public:
     int quit( )
     {
         release_program(m_program);
-        m_terrain.release();
-        m_sun.release();
         return 0;
     }
 
@@ -84,10 +89,13 @@ public:
         m_camera.deplacer();
         m_terrain.hauteurCamera(m_camera);
 
-        m_sun.passe1(m_terrain);
+        m_sun.passe1(m_terrain, m_billboards);
 
+        if(key_state('d'))
+            m_sun.showFramebuffer();
+        else {
         // Reflection
-        v = m_camera.lookAt(Vector(0.0,2.0*(m_camera.position().y-float(m_nbRegions)*0.2113),0.0),true);
+        v = m_camera.lookAt(Vector(0.0,2.0*(m_camera.getPosition().y-float(m_nbRegions)*0.2113),0.0),true);
 		m_terrain.bindBuffers(  p * v );
 		
         glUseProgram(m_program);
@@ -103,8 +111,6 @@ public:
 
         if(key_state('e')) {
             m_water.showReflection();
-        } else if(key_state('a')) {
-            m_water.showRefraction();
         } else {
             vec3 skyColor = m_sun.skyColor();
             glClearColor(skyColor.x, skyColor.y, skyColor.z, 1.f);
@@ -117,10 +123,11 @@ public:
             m_sun.parametrerPasse2(m_program);
                     
             m_terrain.multiDraw(m_program, p, v);
+            m_billboards.show( p, v, m_sun.skyColor());
             //m_sun.drawSun(v, p);
             m_water.show(v,p, m_camera, m_terrain, m_sun);
         }
-
+        }
         return 1;
     }
 

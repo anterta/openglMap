@@ -1,24 +1,8 @@
+
 #include "camera.h"
 #include <math.h>
 #include <SDL2/SDL.h>
 
-
-// Constructeurs et Destructeur
-
-Camera::Camera() :  m_phi(0.0), m_theta(0.0), m_orientation(1,0,0), m_deplacementLateral(0,1,0), m_axeVertical(0, 0, 1),
-                    m_axeLateral(0,1,0), m_position(), m_sensibilite(0.0), m_vitesse(0.0) { }
-
-
-Camera::Camera(Vector position, Vector axeVertical, Vector axeLateral, double sensibilite, double vitesse) : 
-            m_phi(0.0), m_theta(0.0), m_orientation(cross(axeLateral,axeVertical)), m_deplacementLateral(axeLateral), m_axeVertical(axeVertical),
-            m_axeLateral(axeLateral), m_position(position), m_sensibilite(sensibilite), m_vitesse(vitesse)
-{ }
-
-
-Camera::~Camera() { }
-
-
-// M�thodes
 
 void Camera::orienter(int xRel, int yRel)
 {
@@ -118,44 +102,4 @@ void Camera::setPointcible(Point pointCible)
     // Conversion en degr�s
     m_phi = m_phi * 180 / M_PI;
     m_theta = m_theta * 180 / M_PI;
-}
-
-
-void Camera::setPosition(Point position)
-{
-    m_position = position;
-}
-
-
-double Camera::getSensibilite() const
-{
-    return m_vitesse;
-}
-
-
-double Camera::getVitesse() const
-{
-    return m_vitesse;
-}
-
-
-void Camera::setSensibilite(double sensibilite)
-{
-    m_sensibilite = sensibilite;
-}
-
-
-void Camera::setVitesse(double vitesse)
-{
-    m_vitesse = vitesse;
-}
-
-Point Camera::position( )
-{/*
-    Transform t= lookAt();     // passage monde vers camera
-    Transform tinv= t.inverse();            // l'inverse, passage camera vers monde
-    
-    return tinv(Point(0, 0, 0));        // la camera se trouve a l'origine, dans le repere camera...
-*/
-    return Point(m_position);
 }

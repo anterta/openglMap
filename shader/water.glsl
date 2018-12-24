@@ -11,6 +11,7 @@ uniform float waveHeight;
 uniform float waveWidth;
 uniform vec4 lightPos;
 uniform float camOrient;
+uniform vec3 skyColor;
 
 out vec4 pos;
 out float moveF;
@@ -19,6 +20,7 @@ out vec2 textCoords;
 out float camDir;
 out vec3 dirLight;
 out vec3 lightColor;
+out vec4 skyColorF;
 
 void main(void) {
 	moveF = move;
@@ -34,6 +36,8 @@ void main(void) {
     float b = 4*nuit/10 + 0.1;
 	lightColor = vec3(r,g,b);
 
+    skyColorF = vec4(skyColor,1);
+
 	gl_Position = pos;
 }
 #endif
@@ -48,10 +52,9 @@ in vec2 textCoords;
 in float camDir;
 in vec3 dirLight;
 in vec3 lightColor;
-
+in vec4 skyColorF;
 
 uniform sampler2D reflectionTexture;
-uniform sampler2D refractionTexture;
 uniform sampler2D dudvMap;
 uniform sampler2D normalMap;
 
@@ -62,7 +65,7 @@ const float reflectivity = 10;
 
 void main(void)
 {
-	vec2 reflecCoords = (vec2(pos.x,-pos.y)/pos.w)/2+.5;
+	vec2 reflecCoords = (vec2(pos.x,-pos.y)/pos.w)/2+.5;/*
 	
 	float loop = textCoords.x + moveF;
 	if(loop > .99)
@@ -77,8 +80,10 @@ void main(void)
 	if(loop2 > .99)
 		loop2 -= .98;
 	
-	distortion += texture(dudvMap, vec2(loop, loop2)).rg * waveHeightF/2;
+	distortion += texture(dudvMap, vec2(loop, loop2)).rg * waveHeightF/2;*/
 	
+	vec2 distortion = texture(dudvMap, textCoords).rg * waveHeightF;
+	distortion += texture(dudvMap, textCoords).rg * waveHeightF/2;
 	reflecCoords += distortion;
 	reflecCoords = clamp(reflecCoords, 0.01, 0.99);
 	
@@ -105,7 +110,13 @@ void main(void)
 	//fragment_color = mix(reflectionColour, 2*refractionColour, factor);
 	//fragment_color = mix(fragment_color, vec4(0, .3, .5, 1), .2);// + vec4(specularHighlights, 1);
 	//fragment_color = mix(reflectionColour, vec4(0, .3, .5, 1), factor);// + vec4(specularHighlights, 1);
-	fragment_color = vec4(reflectionColour.xyz, 1 - camDir);
-	fragment_color = mix(fragment_color, vec4(0, .3, .5, .7), .5);
+	
+	fragment_color = mix(vec4(reflectionColour.xyz, 1 - camDir), vec4(0, .3, .5, .7), .5);
+
+    float fog = exp(-pow(length(pos.z)*0.01,5.));
+    fog = clamp(fog,0.0,1.0);
+    fragment_color = mix(skyColorF,fragment_color,fog);
+	if(fog==0)
+		fragment_color = vec4(1,0,0,1);
 }
 #endif

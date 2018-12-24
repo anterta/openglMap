@@ -115,7 +115,6 @@ in float tailleTextShadow;
 
 flat in int choixTexture;
 
-//uniform sampler2D water_texture;
 uniform sampler2D grass_top_texture;
 uniform sampler2D grass_side_texture;
 uniform sampler2D ground_texture;
@@ -129,9 +128,6 @@ void main( )
     // La texture en fonction de la hauteur
     vec4 color;
     switch(choixTexture) {
-        case 0:
-            color= texture(grass_top_texture, vertex_texcoord);
-        break;
         case 1:
             color= texture(grass_side_texture, vertex_texcoord);
             if( cube_pos.y > 0.49) 
@@ -156,7 +152,7 @@ void main( )
     for(int x=-1; x <= 1; x++)
         for(int y=-1; y<= 1; y++) {
             float shadowColor = texture( zBuffer_texture, ShadowCoord.xy + vec2(x,y) * tailleTextShadow).r;
-            if ( shadowColor  < ShadowCoord.z - 0.01)
+            if ( shadowColor  < ShadowCoord.z - 0.005)
                 total += 1.0;
         }
 

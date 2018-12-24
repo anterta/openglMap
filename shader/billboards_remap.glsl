@@ -5,9 +5,13 @@
 
 layout(location= 0) in vec3 position;
 layout(location= 1) in vec2 texcoord;
-uniform mat4 mvpMatrix;
+uniform mat4 vpMatrix;
+uniform mat4 inverseMatrix;
+uniform vec3 skyColor;
 
 out vec2 textCoords;
+out float fog;
+out vec3 skyColorF;
 
 
 // row_major : organisation des matrices par lignes...
@@ -26,22 +30,32 @@ void main(void) {
     textCoords = texcoord;
     uint id= remap[gl_DrawIDARB];
     vec4 p = objectMatrix[id] * vec4(position, 1);
-	gl_Position = mvpMatrix * p;
+
+    // Calcul pour le brouillard
+    vec3 position_obs   = (inverseMatrix    * vec4(0,0,0,1)).xyz;
+    vec3 obs_direction  = position_obs - p.xyz;
+    fog = exp(-pow(length(obs_direction)*0.01,5.));
+    fog = clamp(fog,0.0,1.0);
+    skyColorF = skyColor;
+
+	gl_Position = vpMatrix * p;
 }
 #endif
 
 #ifdef FRAGMENT_SHADER
 
 in vec2 textCoords;
+in float fog;
+in vec3 skyColorF;
 uniform sampler2D texture0;
 
 out vec4 fragment_color;
 
 void main(void)
 {
-    vec4 color = texture(texture0, textCoords);/*
-    if(color.a < .5)
-        discard;*/
-	fragment_color = vec4(1,0,0,1);//color;
+    vec4 color = texture(texture0, textCoords);
+    if(color.a < .9)
+        discard;
+    fragment_color = vec4(mix(skyColorF,color.xyz,fog),1);
 }
 #endif

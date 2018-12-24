@@ -2,15 +2,6 @@
 #ifndef _TERRAIN_H
 #define _TERRAIN_H
 
-#include "mat.h"
-#include "mesh.h"
-#include "wavefront.h"
-#include "image.h"
-#include "image_io.h"
-#include "uniforms.h"
-#include "draw.h"
-#include "program.h"
-
 #include "camera.h"
 #include "billboards.h"
 
@@ -18,9 +9,12 @@
 class Terrain
 {
     public:
-    Terrain() {};
+    Terrain() {}
+    ~Terrain() {
+        m_mesh.release();
+    }
     
-    void make_terrain( const char *filename, const int nbRegions);
+    void make_terrain( const char *filename, const int nbRegions, Billboards& billboards);
 
     int sizeRegion() { return m_sizeRegion; }
     Mesh mesh() { return m_mesh; }
@@ -49,7 +43,6 @@ class Terrain
     std::vector<Transform> m_multi_model;
     std::vector<Object> m_objects;
 
-    Billboards m_billboards;
     Multi_Draw m_multi_draw;
     
 };

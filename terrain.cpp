@@ -1,7 +1,8 @@
-#include "terrain.h"
-#include "time.h"
 
-void Terrain::make_terrain( const char *filename, const int nbRegions) {
+#include "terrain.h"
+#include "gKit/wavefront.h"
+
+void Terrain::make_terrain( const char *filename, const int nbRegions, Billboards& billboards) {
     m_cube = read_mesh("data/cube.obj");;
     m_multi_draw.initialiser(m_cube);
     m_nbRegions = nbRegions;
@@ -15,10 +16,10 @@ void Terrain::make_terrain( const char *filename, const int nbRegions) {
     float coord_scaleY = float(data.height())/nbCubes;
     float coord_scaleX = float(data.width())/nbCubes;
 
-    int random = rand() % 1000 + 100;
+    int random = rand() % 500 + 100;
     int count = 0;
-    float heightWater = nbRegions * 0.2;
-    float heightSnow = nbRegions * 2.9;
+    float heightWater = nbRegions * 0.25;
+    float heightSnow = nbRegions * 2.1;
 
     for(int ry=0; ry<nbRegions; ry++)
         for(int rx=0; rx<nbRegions; rx++){
@@ -46,16 +47,14 @@ void Terrain::make_terrain( const char *filename, const int nbRegions) {
                         if(random == 0) {
                             count++;
                             //std::cout << count << std::endl;
-                            m_billboards.addPos(tmp+Vector(0,5,0));
-                            //random = rand() % 1000 + 100;
-                            random = rand() % 100 + 10;
+                            billboards.addPos(tmp + Vector(0,.5,0));
+                            random = rand() % 500 + 100;
                         }
                     }
                 }
             m_min_max.push_back(vec2(hmin,hmax));
         }
-    m_multi_draw.createBuffer("src/shader_indirect_cull.glsl"); 
-    m_mesh.release();
+    m_multi_draw.createBuffer("src/shader/indirect_cull.glsl");
 }
 
 void Terrain::bindBuffers( const Transform& mvp ) {
@@ -68,15 +67,10 @@ void Terrain::multiDraw(const GLuint& program, const Transform& p, const Transfo
     program_uniform(program, "inverseMatrix", v.inverse());
 
     m_multi_draw.multiDraw();
-    m_billboards.show(p*v);
 }
 
 void Terrain::multiDraw() {
     m_multi_draw.multiDraw();
-}
-
-void Terrain::release() {
-    m_multi_draw.release();
 }
 
 float Terrain::getHauteur(float x, float y) {
@@ -111,7 +105,7 @@ float Terrain::getHauteur(float x, float y) {
 }
 
 void Terrain::hauteurCamera(Camera &cam) {
-    Point p = cam.position();  
+    Point p = cam.getPosition();  
     float h = getHauteur(p.x,-p.z)+5;
     if(p.y < h)
         p.y = std::min(h,p.y + 0.2f);
